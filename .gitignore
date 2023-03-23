@@ -1,0 +1,7 @@
+/logs
+/stats
+/tests
+*.log
+*.png
+*.ipynb
+**/__pycache__/*
