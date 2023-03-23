@@ -22,6 +22,9 @@ class Batch:
         majors = self.state.pods.allmajors()
         return {p.id for p in self.pods if p.name in majors}
 
+    def __repr__(self) -> str:
+        return f"{{{', '.join(pod.id for pod in self.pods)}}}"
+
 
 @dataclass
 class Solution:
@@ -41,6 +44,9 @@ class Solution:
         for batch in self.batches:
             result |= batch.majors
         return result
+
+    def __repr__(self) -> str:
+        return f"[{'; '.join(str(batch) for batch in self.batches)}]"
 
 
 class Solver(ABC):
@@ -122,6 +128,7 @@ class CIPSingleBatchSolver(Solver):
         return Solution(state=state, batches=[Batch(state=state, pods=pods)])
 
 
+@dataclass
 class CIPMultipleBatchSolver(Solver):
     C1: float = 1000.0
     C2: float = 100.0
@@ -168,7 +175,7 @@ class CIPMultipleBatchSolver(Solver):
         while k <= len(state.pods):
             k += 1
             stateK = state.copy()
-            for name, redu in stateK.pods.redus.items():
+            for name, redu in list(stateK.pods.redus.items()):
                 stateK.pods.redundant(name, redu*k)
             solution = singleSolver.solve(stateK)
             assert len(solution.coveredConnection) <= totalWeak
@@ -179,4 +186,4 @@ class CIPMultipleBatchSolver(Solver):
 
         assert solution is not None, "Unexpected none solution."
         assert len(solution.batches) == 1
-        return self.splitBatch(state, solution.batches[0])
+        return Solution(state=state, batches=self.splitBatch(state, solution.batches[0]))

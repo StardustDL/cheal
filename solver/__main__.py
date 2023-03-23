@@ -14,8 +14,9 @@ def main(buildScript: str):
         "state": state,
         "gen": gen,
     })
-    from .solver import HealingSolver
-    print(HealingSolver(state).compile().solve())
+    from .solver import CIPMultipleBatchSolver
+    solver = CIPMultipleBatchSolver()
+    print(repr(solver.solve(state)))
 
 if __name__ == "__main__":
     assert len(sys.argv) == 2, "Must have a file argument."

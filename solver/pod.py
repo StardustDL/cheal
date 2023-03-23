@@ -26,9 +26,12 @@ class PodManager(dict[str, Pod]):
     majors: dict[str, bool] = field(default_factory=dict)
 
     def copy(self):
-        return PodManager(types={k: v.copy() for k, v in self.types.items()},
-                          redus={k: v for k, v in self.redus.items()},
-                          majors={k: v for k, v in self.majors.items()})
+        result = PodManager(types={k: v.copy() for k, v in self.types.items()},
+                            redus={k: v for k, v in self.redus.items()},
+                            majors={k: v for k, v in self.majors.items()})
+        for name, pod in self.items():
+            result[name] = pod
+        return result
 
     def allmajors(self):
         return {name for name, ismajor in self.majors.items() if ismajor}
