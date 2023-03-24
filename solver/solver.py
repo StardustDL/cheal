@@ -35,6 +35,18 @@ class Batch:
         print(f"""  Pods: {pods}
     include {len(self.pods)} pods ({len(self.majors)} majors), covered {len(self.coveredConnection)} connections""")
 
+    def valid(self):
+        name2pod = defaultdict(list)
+        for pod in self.pods:
+            name2pod[pod.name].append(pod)
+        for name, pods in name2pod.items():
+            redu = self.state.pods.redus.get(name, None)
+            if redu is None:
+                continue
+            if len(pods) > redu:
+                return False
+        return True
+
 
 @dataclass
 class Solution:
@@ -78,6 +90,9 @@ class Solution:
         for i, batch in enumerate(self.batches):
             print(f"Batch {i+1} / {len(self.batches)}:")
             batch.display()
+
+    def valid(self):
+        return all(batch.valid() for batch in self.batches)
 
 
 class Solver(ABC):
@@ -239,5 +254,7 @@ class CIPMultipleBatchSolver(Solver):
             state=state, batches=self.splitBatch(state, targetSolution.batches[0]))
         assert len(finalSolution.batches) == batchCount, \
             f"The batch count is not equal, {batchCount=}, {len(finalSolution.batches)=}."
+        
+        assert finalSolution.valid()
 
         return finalSolution

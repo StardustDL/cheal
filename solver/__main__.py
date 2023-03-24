@@ -14,6 +14,7 @@ def main(buildScript: str):
         "state": state,
         "gen": gen,
     })
+    state.display()
     from .solver import CIPMultipleBatchSolver
     solver = CIPMultipleBatchSolver()
     solution = solver.solve(state)

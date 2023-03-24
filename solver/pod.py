@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field, replace
 from typing import Iterable
+from rich import print
 
 
 @dataclass
@@ -62,3 +63,13 @@ class PodManager(dict[str, Pod]):
         self.redundant(name, redundant)
         self.major(name, major)
         return result
+    
+    def display(self):
+        print(f"Pods ({len(self)} pods, in {len(self.types)} types):")
+        for name, pods in self.types.items():
+            ismajor = self.majors.get(name, False)
+            redu = self.redus.get(name, None)
+            nameStr = f"[bold]{name}[/bold]" if ismajor else f"{name}"
+            reduStr = f"<={redu}" if redu is not None else "N/A"
+            print(f"  {nameStr} ({len(pods)}, {reduStr}): {', '.join(pod.id for pod in pods)}")
+

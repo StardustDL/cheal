@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field, replace
 from .pod import PodManager, Pod
-
+from rich import print
 
 @dataclass
 class ConnectionState:
@@ -29,3 +29,9 @@ class ConnectionState:
     def weaks(self, *edges: tuple[str | Pod, str | Pod]):
         for x, y in edges:
             self.weak(x, y)
+
+    def display(self):
+        self.pods.display()
+        print(f"Connections ({len(self.pairs())} links): ")
+        for source, targets in self.subhs.items():
+            print(f"  {source} ({len(targets)}): {', '.join(targets)}")
