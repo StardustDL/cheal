@@ -16,7 +16,8 @@ def main(buildScript: str):
     })
     from .solver import CIPMultipleBatchSolver
     solver = CIPMultipleBatchSolver()
-    print(repr(solver.solve(state)))
+    solution = solver.solve(state)
+    solution.display()
 
 if __name__ == "__main__":
     assert len(sys.argv) == 2, "Must have a file argument."

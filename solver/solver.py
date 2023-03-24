@@ -5,6 +5,8 @@ import pyomo.environ as pyo
 from .connection import ConnectionState
 from .pod import Pod, PodManager
 from abc import ABC, abstractmethod
+from rich import print
+from math import ceil
 
 
 @dataclass
@@ -25,6 +27,14 @@ class Batch:
     def __repr__(self) -> str:
         return f"{{{', '.join(pod.id for pod in self.pods)}}}"
 
+    def display(self):
+        majors = self.majors
+        others = {p.id for p in self.pods} - majors
+        pods = ", ".join(list(
+            f"[bold]{name}[/bold]" for name in majors) + list(f"{name}" for name in others))
+        print(f"""  Pods: {pods}
+    include {len(self.pods)} pods ({len(self.majors)} majors), covered {len(self.coveredConnection)} connections""")
+
 
 @dataclass
 class Solution:
@@ -33,20 +43,41 @@ class Solution:
 
     @cached_property
     def coveredConnection(self):
-        result = set()
+        result: set[tuple[str, str]] = set()
         for batch in self.batches:
             result |= batch.coveredConnection
         return result
 
     @cached_property
     def majors(self):
-        result = set()
+        result: set[str] = set()
         for batch in self.batches:
             result |= batch.majors
         return result
 
+    @cached_property
+    def pods(self):
+        result: set[str] = set()
+        for batch in self.batches:
+            result |= {p.id for p in batch.pods}
+        return result
+
+    @cached_property
+    def evaluated(self):
+        return (len(self.coveredConnection), len(self.batches), len(self.majors), len(self.pods))
+
     def __repr__(self) -> str:
-        return f"[{'; '.join(str(batch) for batch in self.batches)}]"
+        return f"[{'; '.join(str(batch) for batch in self.batches)}] @ {self.evaluated}"
+
+    def display(self):
+        totalPairs = len(self.state.pairs())
+        print(f"Solution:")
+        print(f"""  {len(self.batches)} batches
+  include {len(self.pods)} / {len(self.state.pods)} pods ({len(self.majors)} majors)
+  covered {len(self.coveredConnection)} / {totalPairs} connections""")
+        for i, batch in enumerate(self.batches):
+            print(f"Batch {i+1} / {len(self.batches)}:")
+            batch.display()
 
 
 class Solver(ABC):
@@ -169,21 +200,44 @@ class CIPMultipleBatchSolver(Solver):
     def solve(self, state: ConnectionState) -> Solution:
         totalWeak = len(state.pairs())
         singleSolver = CIPSingleBatchSolver(self.C1, self.C3, self.C4)
-        solution = None
 
-        k = 0
-        while k <= len(state.pods):
-            k += 1
+        def solveKBatch(k: int):
             stateK = state.copy()
             for name, redu in list(stateK.pods.redus.items()):
                 stateK.pods.redundant(name, redu*k)
             solution = singleSolver.solve(stateK)
             assert len(solution.coveredConnection) <= totalWeak
-            if len(solution.coveredConnection) == totalWeak:
-                break
-        else:
-            assert False, "Failed to generate a valid solution."
+            return solution
 
-        assert solution is not None, "Unexpected none solution."
-        assert len(solution.batches) == 1
-        return Solution(state=state, batches=self.splitBatch(state, solution.batches[0]))
+        batchL, batchR = 1, 1
+        for name, redu in state.pods.redus.items():
+            assert redu >= 0
+            if redu == 0:
+                continue
+            totalPods = len(state.pods.types[name])
+            batchR = max(batchR, ceil(totalPods / redu))
+        batchCount = batchR
+        targetSolution = solveKBatch(batchCount)
+        maxCovered = len(targetSolution.coveredConnection)
+
+        while batchL <= batchR:
+            mid = (batchL + batchR) // 2
+            solution = solveKBatch(mid)
+            if len(solution.coveredConnection) < maxCovered:
+                batchL = mid+1
+            else:
+                assert len(solution.coveredConnection) == maxCovered
+                assert mid <= batchCount
+                batchCount = mid
+                targetSolution = solution
+                batchR = mid-1
+
+        assert len(targetSolution.batches) == 1 and len(
+            targetSolution.coveredConnection) == maxCovered, "Unexpected none solution."
+
+        finalSolution = Solution(
+            state=state, batches=self.splitBatch(state, targetSolution.batches[0]))
+        assert len(finalSolution.batches) == batchCount, \
+            f"The batch count is not equal, {batchCount=}, {len(finalSolution.batches)=}."
+
+        return finalSolution

@@ -4,10 +4,11 @@ from pathlib import Path
 import subprocess
 import traceback
 
-pods = [200, 500, 1000]
+# pods = [200, 500, 1000]
+pods = [100]
 types = [0.05, 0.1, 0.2]
 weaks = [0.05, 0.1, 0.2]
-REPEAT = 10
+REPEAT = 5
 
 
 def gen(pod, type, weak):
