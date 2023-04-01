@@ -30,7 +30,6 @@ def executeWithTime(filename):
         if line.startswith("Maximum resident set size (kbytes):"):
             maxResidentSize = int(line.split(':')[1])
     print(f"""
-result: {', '.join(eval(output))}
 time  : {wallClock} s
 cpu   : {cpuPercent} %
 memory: {maxResidentSize / 1024} MB

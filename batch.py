@@ -5,10 +5,10 @@ import subprocess
 import traceback
 
 # pods = [200, 500, 1000]
-pods = [100]
+pods = [150]
 types = [0.05, 0.1, 0.2]
 weaks = [0.05, 0.1, 0.2]
-REPEAT = 5
+REPEAT = 10
 
 
 def gen(pod, type, weak):
@@ -45,7 +45,7 @@ def solve():
                 result = subprocess.run(
                     ["python", "measure.py", name], capture_output=True, timeout=660, check=True)
             except Exception as ex:
-                subprocess.run(["pkill", "scip"], check=True, timeout=60)
+                subprocess.run(["pkill", "scip"], timeout=60)
                 traceback.print_exception(ex)
         logFile = Path(f"./logs/{name}.json")
         if not logFile.is_file():
@@ -83,4 +83,4 @@ def stats():
             logs.sort(key=lambda x: float(x["wallClock"]))
             print(name, logs[mid]["wallClock"])
     
-stats()
+solve()
