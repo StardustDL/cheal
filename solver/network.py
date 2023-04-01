@@ -1,5 +1,8 @@
 from dataclasses import dataclass, field
 from collections import defaultdict, deque
+from itertools import combinations
+from .pod import Pod
+
 
 @dataclass
 class ShortestPathCollector:
@@ -18,15 +21,14 @@ class ShortestPathCollector:
         for target in targets:
             assert target in self.nodes and target not in nexts
             nexts.add(target)
-    
+
     def biedge(self, source: int, *targets: int):
         assert source in self.edges
         for target in targets:
             assert target in self.nodes
             self.edge(source, target)
             self.edge(target, source)
-            
-    
+
     def shortestPaths(self, source: int):
         assert source in self.nodes
         dist: dict[int, int] = {source: 0}
@@ -50,18 +52,165 @@ class ShortestPathCollector:
                         result[v].append(pathU + [v])
         return result
 
+
+@dataclass
+class Switch:
+    id: str
+    interfaces: int = field(default=2)
+
+    def iname(self, num: int):
+        assert 0 <= num < self.interfaces
+        return f"{self.id}:{num}"
+
+    def inames(self):
+        return [self.iname(i) for i in range(self.interfaces)]
+
+
+@dataclass
+class Host(Switch):
+    pods: set[str] = field(default_factory=set)
+
+
+@dataclass
+class Network:
+    devices: dict[str, Switch] = field(default_factory=dict, init=False)
+    interfaces: dict[str, Switch] = field(default_factory=dict, init=False)
+    pods: dict[str, Host] = field(default_factory=dict, init=False)
+    links: dict[str, set[str]] = field(default_factory=dict, init=False)
+
+    def device(self, *devices: Switch):
+        for device in devices:
+            assert device.id not in self.devices
+            self.devices[device.id] = device
+            for iname in device.inames():
+                assert iname not in self.interfaces
+                self.interfaces[iname] = device
+            if isinstance(device, Host):
+                for pod in device.pods:
+                    assert pod not in self.pods
+                    assert pod not in self.interfaces
+                    self.pods[pod] = device
+
+    def link(self, source: tuple[Switch, int], target: tuple[Switch, int]):
+        sW, sI = source
+        tW, tI = target
+        assert sW.id in self.devices and tW.id in self.devices
+        assert sI < sW.interfaces and tI < tW.interfaces
+        sI = sW.iname(sI)
+        tI = tW.iname(tI)
+        if sI > tI:
+            sI, tI = tI, sI
+        if sI not in self.links:
+            self.links[sI] = set()
+        self.links[sI].add(tI)
+
+
+@dataclass
+class NetworkState:
+    network: Network
+    id2int: dict[str, int] = field(default_factory=dict)
+    int2id: dict[int, str] = field(default_factory=dict)
+    paths: ShortestPathCollector = field(default_factory=ShortestPathCollector)
+    computedPaths: dict[int, dict[int, list[list[int]]]
+                        ] = field(default_factory=dict)
+    weaks: set[int] = field(default_factory=set)
+
+    def __post_init__(self):
+        interfaces = list(self.network.interfaces.keys()) + \
+            list(self.network.pods.keys()) + list(self.network.devices.keys())
+        id2int = {}
+        for k in interfaces:
+            id2int[k] = len(id2int)
+        self.id2int = id2int
+        self.int2id = {v: k for k, v in id2int.items()}
+        self.paths.node(*self.int2id.keys())
+
+        # create endpoint for each device, each pod, each interface of each device
+
+        for device in self.network.devices.values():
+            inames = device.inames()
+            for iname in inames:
+                self.paths.biedge(id2int[device.id], id2int[iname])
+            if isinstance(device, Host):
+                for pod in device.pods:
+                    self.paths.biedge(id2int[pod], id2int[device.id])
+
+        for src, dsts in self.network.links.items():
+            self.paths.biedge(id2int[src], *map(id2int.get, dsts))
+
+        self.computePaths()
+
+    def computePaths(self):
+        self.computedPaths.clear()
+        podInts = {self.id2int[id] for id in self.network.pods}
+        for pod in self.network.pods:
+            pInt = self.id2int[pod]
+            podresult = self.paths.shortestPaths(pInt)
+            self.computedPaths[pInt] = {k: v for k,
+                                        v in podresult.items() if k in podInts}
+
+    def translateIntPath(self, raw: list[int]):
+        return [self.int2id.get(v, "!unknown") for v in raw]
+
+    def pathStates(self, source: str, target: str):
+        # return a tuple of [healthy paths, weakpaths]
+        assert source in self.network.pods and target in self.network.pods
+        rawPaths = self.computedPaths[self.id2int[source]][self.id2int[target]]
+        healthyPaths = []
+        weakPaths = []
+        for path in rawPaths:
+            trans = self.translateIntPath(path)
+            if any(x in path for x in self.weaks):
+                weakPaths.append(trans)
+            else:
+                healthyPaths.append(trans)
+        return healthyPaths, weakPaths
+
+    def turn(self, endpoint: str | Switch | Pod | tuple[Switch, int], ison: bool):
+        if isinstance(endpoint, Switch):
+            id = endpoint.id
+        elif isinstance(endpoint, Pod):
+            id = endpoint.id
+        elif isinstance(endpoint, tuple):
+            sw, i = endpoint
+            id = sw.iname(i)
+        else:
+            id = endpoint
+        assert id in self.id2int
+        id = self.id2int[id]
+        if not ison:
+            self.weaks.add(id)
+        elif id in self.weaks:
+            self.weaks.remove(id)
+
+    def off(self, *endpoints: str | Switch | Pod | tuple[Switch, int]):
+        for endpoint in endpoints:
+            self.turn(endpoint, False)
+
+    def on(self, *endpoints: str | Switch | Pod | tuple[Switch, int]):
+        for endpoint in endpoints:
+            self.turn(endpoint, True)
+
+
 if __name__ == "__main__":
-    col = ShortestPathCollector()
-    col.node(*list(range(10)))
-    col.biedge(0, 1, 2)
-    col.biedge(1, 2)
-    col.biedge(3, 4)
-    col.biedge(5, 6)
-    col.biedge(7, 8)
-    col.biedge(1, 5)
-    col.biedge(2, 7)
-    col.biedge(3, 6)
-    col.biedge(4, 8)
-    col.biedge(9, 3, 4)
-    for i, l in col.shortestPaths(0).items():
-        print(i, l)
+    net = Network()
+    pod0 = Pod("sm2", 0)
+    pod1 = Pod("csdb", 0)
+    host0 = Host("host-0", pods={pod0.id})
+    host1 = Host("host-1", pods={pod1.id})
+    sw0 = Switch("tor-0")
+    sw1 = Switch("tor-1")
+    net.device(host0, host1, sw0, sw1)
+    net.link((host0, 0), (sw0, 0))
+    net.link((host0, 1), (sw1, 0))
+    net.link((host1, 0), (sw0, 1))
+    net.link((host1, 1), (sw1, 1))
+    state = NetworkState(net)
+    state.off((host0, 0))
+    healthy, weak = state.pathStates("sm2-0", "csdb-0")
+    print("Healthy:")
+    for path in healthy:
+        print(path)
+    print("Weak:")
+    for path in weak:
+        print(path)
