@@ -20,10 +20,10 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from solver.pod import PodManager
     from solver.connection import ConnectionState
-    from solver.generator import NetworkGenerator
+    from solver.generator import RandomConnectionStateGenerator
     pods = PodManager()
     state = ConnectionState(pods)
-    gen = NetworkGenerator()
+    gen = RandomConnectionStateGenerator()
 
 gen.pods(pods, {pod}, {type})
 gen.state(state, {weak})

@@ -1,7 +1,9 @@
 from dataclasses import dataclass, field
 from collections import defaultdict, deque
 from itertools import combinations
-from .pod import Pod
+import random
+from .pod import Pod, PodManager
+from .connection import ConnectionState
 
 
 @dataclass
@@ -73,9 +75,9 @@ class Host(Switch):
 
 @dataclass
 class Network:
+    pods: PodManager = field(default_factory=PodManager)
     devices: dict[str, Switch] = field(default_factory=dict, init=False)
     interfaces: dict[str, Switch] = field(default_factory=dict, init=False)
-    pods: dict[str, Host] = field(default_factory=dict, init=False)
     links: dict[str, set[str]] = field(default_factory=dict, init=False)
 
     def device(self, *devices: Switch):
@@ -87,9 +89,8 @@ class Network:
                 self.interfaces[iname] = device
             if isinstance(device, Host):
                 for pod in device.pods:
-                    assert pod not in self.pods
+                    assert pod in self.pods
                     assert pod not in self.interfaces
-                    self.pods[pod] = device
 
     def link(self, source: tuple[Switch, int], target: tuple[Switch, int]):
         sW, sI = source
@@ -113,9 +114,17 @@ class NetworkState:
     paths: ShortestPathCollector = field(default_factory=ShortestPathCollector)
     computedPaths: dict[int, dict[int, list[list[int]]]
                         ] = field(default_factory=dict)
-    weaks: set[int] = field(default_factory=set)
+    weaks: set[str] = field(default_factory=set)
 
     def __post_init__(self):
+        self.refresh(self.network)
+
+    def refresh(self, network: Network):
+        self.network = network
+        self.buildGraph()
+        self.computePaths()
+
+    def buildGraph(self):
         interfaces = list(self.network.interfaces.keys()) + \
             list(self.network.pods.keys()) + list(self.network.devices.keys())
         id2int = {}
@@ -123,6 +132,8 @@ class NetworkState:
             id2int[k] = len(id2int)
         self.id2int = id2int
         self.int2id = {v: k for k, v in id2int.items()}
+
+        self.paths = ShortestPathCollector()
         self.paths.node(*self.int2id.keys())
 
         # create endpoint for each device, each pod, each interface of each device
@@ -137,8 +148,6 @@ class NetworkState:
 
         for src, dsts in self.network.links.items():
             self.paths.biedge(id2int[src], *map(id2int.get, dsts))
-
-        self.computePaths()
 
     def computePaths(self):
         self.computedPaths.clear()
@@ -158,12 +167,12 @@ class NetworkState:
         rawPaths = self.computedPaths[self.id2int[source]][self.id2int[target]]
         healthyPaths = []
         weakPaths = []
+        weaks = [self.id2int[x] for x in self.weaks]
         for path in rawPaths:
-            trans = self.translateIntPath(path)
-            if any(x in path for x in self.weaks):
-                weakPaths.append(trans)
+            if any(x in path for x in weaks):
+                weakPaths.append(path)
             else:
-                healthyPaths.append(trans)
+                healthyPaths.append(path)
         return healthyPaths, weakPaths
 
     def turn(self, endpoint: str | Switch | Pod | tuple[Switch, int], ison: bool):
@@ -177,7 +186,6 @@ class NetworkState:
         else:
             id = endpoint
         assert id in self.id2int
-        id = self.id2int[id]
         if not ison:
             self.weaks.add(id)
         elif id in self.weaks:
@@ -193,13 +201,14 @@ class NetworkState:
 
 
 if __name__ == "__main__":
-    net = Network()
-    pod0 = Pod("sm2", 0)
-    pod1 = Pod("csdb", 0)
+    pods = PodManager()
+    pod0 = pods.single("sm2", 0)
+    pod1 = pods.single("csdb", 0)
     host0 = Host("host-0", pods={pod0.id})
     host1 = Host("host-1", pods={pod1.id})
     sw0 = Switch("tor-0")
     sw1 = Switch("tor-1")
+    net = Network(pods)
     net.device(host0, host1, sw0, sw1)
     net.link((host0, 0), (sw0, 0))
     net.link((host0, 1), (sw1, 0))
@@ -210,7 +219,10 @@ if __name__ == "__main__":
     healthy, weak = state.pathStates("sm2-0", "csdb-0")
     print("Healthy:")
     for path in healthy:
-        print(path)
+        print(state.translateIntPath(path))
     print("Weak:")
     for path in weak:
-        print(path)
+        print(state.translateIntPath(path))
+    gen = ProbabilityConnectionStateGenerator(state)
+    print(gen.probabilities)
+    print(gen.generate().subhs)

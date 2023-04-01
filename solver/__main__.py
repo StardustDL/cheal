@@ -3,12 +3,12 @@ from pathlib import Path
 
 from .connection import ConnectionState
 from .pod import PodManager
-from .generator import NetworkGenerator
+from .generator import RandomConnectionStateGenerator
 
 def main(buildScript: str):
     pods = PodManager()
     state = ConnectionState(pods)
-    gen = NetworkGenerator()
+    gen = RandomConnectionStateGenerator()
     exec(buildScript, {
         "pods": pods,
         "state": state,
