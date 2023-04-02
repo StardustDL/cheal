@@ -46,8 +46,8 @@ class CIPMultipleBatchSolver(Solver):
             batches[i].pods.append(pod)
 
         for name, pods in name2pods.items():
-            config = state.pods.configs.get(name, None)
-            if config is None:
+            config = state.pods.configs[name]
+            if config.redundancy is None:
                 for pod in pods:
                     append(0, pod)
             else:

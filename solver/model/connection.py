@@ -29,6 +29,6 @@ class ConnectionState(Serializable, dict[str, list[str]]):
 
     def display(self):
         self.pods.display()
-        print(f"Weak Connections ({len(self.pairs())}): ")
+        print(f"{len(self.pairs())} Weak Connections:")
         for source, targets in self.items():
-            print(f"  {source} ({len(targets)}): {', '.join(targets)}")
+            print(f"  {source} -> {', '.join(targets)}")

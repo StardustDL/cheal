@@ -36,10 +36,8 @@ class Batch:
         for pod in self.pods:
             name2pod[pod.name].append(pod)
         for name, pods in name2pod.items():
-            config = self.state.pods.configs.get(name, None)
-            if config is None:
-                continue
-            if len(pods) > config.redundancy:
+            config = self.state.pods.configs[name]
+            if config.redundancy is not None and len(pods) > config.redundancy:
                 return False
         return True
 

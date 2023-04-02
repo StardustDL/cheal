@@ -20,6 +20,10 @@ class Pod(Serializable):
         name, id = id.split("-", maxsplit=1)
         return Pod(name, int(id))
 
+    @classmethod
+    def fromRange(self, name: str, nos: Iterable[int]):
+        return [Pod(name, i) for i in nos]
+
 
 @dataclass
 class PodConfig(Serializable):
@@ -29,7 +33,13 @@ class PodConfig(Serializable):
 
 @dataclass
 class PodContainer(Serializable, dict[str, Pod]):
-    configs: dict[str, PodConfig] = field(default_factory=dict)
+    configs: dict[str, PodConfig] = field(default_factory=lambda: defaultdict(PodConfig))
+
+    def __post_init__(self):
+        configs = defaultdict(PodConfig)
+        for k, v in self.configs.items():
+            configs[k] = v
+        self.configs = configs
 
     def pod(self, *pods: Pod):
         for pod in pods:
@@ -49,10 +59,9 @@ class PodContainer(Serializable, dict[str, Pod]):
 
     def display(self):
         types = self.types
-        print(f"Pods ({len(self)}, in {len(types)} types):")
-        defaultConfig = PodConfig()
+        print(f"{len(self)} Pods (in {len(types)} types):")
         for name, pods in types.items():
-            config = self.configs.get(name, defaultConfig)
+            config = self.configs[name]
             nameStr = f"[bold]{name}[/bold]" if config.major else f"{name}"
             reduStr = f"<={config.redundancy}" if config.redundancy is not None else "N/A"
             print(
