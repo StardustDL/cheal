@@ -8,6 +8,7 @@ from rich import print
 class ConnectionState(Serializable, dict[str, list[str]]):
     pods: PodContainer = field(default_factory=PodContainer)
 
+    @property
     def pairs(self):
         return [(source, target) for source, targets in self.items() for target in targets]
 
@@ -29,6 +30,6 @@ class ConnectionState(Serializable, dict[str, list[str]]):
 
     def display(self):
         self.pods.display()
-        print(f"{len(self.pairs())} Weak Connections:")
+        print(f"{len(self.pairs)} Weak Connections:")
         for source, targets in self.items():
             print(f"  {source} -> {', '.join(targets)}")

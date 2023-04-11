@@ -34,12 +34,14 @@ class ProbabilityConnectionStateGenerator(Serializable):
     pods: PodContainer = field(default_factory=PodContainer)
     probabilities: dict[tuple[str, str], float] = field(default_factory=dict)
 
-    def fromNetwork(self, network: FreezedNetwork):
-        self.pods = network.pods.copy()
-        self.probabilities.clear()
+    @classmethod
+    def fromNetwork(cls, network: FreezedNetwork):
+        result = cls(network.pods.copy())
         for s, t in combinations(network.binds.keys(), 2):
             healthy, weak = network.state(s, t)
-            self.probabilities[(s, t)] = len(weak) / (len(healthy) + len(weak))
+            total = (len(healthy) + len(weak))
+            result.probabilities[(s, t)] = (len(weak) / total) if total > 0 else 0.0
+        return result
 
     def generate(self):
         result = ConnectionState(self.pods)

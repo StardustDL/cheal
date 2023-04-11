@@ -94,11 +94,16 @@ class FreezedNetwork(Network):
             collector.biedge(self.id2int[pod], self.id2int[device])
 
         podInts = {self.id2int[id] for id in self.pods}
-        for pod in self.pods:
+        types = {k: {self.id2int[p.id] for p in v} for k, v in self.pods.types.items()}
+        for pod, val in self.pods.items():
             pInt = self.id2int[pod]
-            podresult = collector.shortestPaths(pInt)
-            self.paths[pInt] = {k: [LinkPath.aspath(self, tv) for tv in v] for k,
-                                v in podresult.items() if k in podInts}
+            sameTypes = types.get(val.name)
+            podresult = collector.shortestPaths(pInt, podInts, sameTypes)
+            paths = {k: [LinkPath.aspath(self, tv) for tv in v] for k, v in podresult.items() if k in podInts}
+            for k in podInts:
+                if k not in paths:
+                    paths[k] = []
+            self.paths[pInt] = paths
 
     def weaks(self):
         return {self.int2id[i] for i in self.weakInts}

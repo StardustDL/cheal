@@ -27,14 +27,20 @@ class ShortestPathCollector:
             self.edge(source, target)
             self.edge(target, source)
 
-    def shortestPaths(self, source: int):
+    def shortestPaths(self, source: int, endpoints: set[int] | None = None, ignored: set[int] | None = None):
+        ignored = ignored or set()
+        endpoints = endpoints or set()
         assert source in self.nodes
         dist: dict[int, int] = {source: 0}
         queue = deque([source])
         while queue:
             u = queue.popleft()
             assert u in dist
+            if u != source and u in endpoints:
+                continue
             for v in self.edges[u]:
+                if v in ignored:
+                    continue
                 if v not in dist:
                     dist[v] = dist[u] + 1
                     queue.append(v)
@@ -44,7 +50,11 @@ class ShortestPathCollector:
 
         sortedNodes = sorted(dist.keys(), key=dist.get)
         for u in sortedNodes:
+            if u != source and u in endpoints:
+                continue
             for v in self.edges[u]:
+                if v in ignored:
+                    continue
                 if v in dist and dist[v] == dist[u] + 1:
                     for pathU in result[u]:
                         result[v].append(pathU + [v])

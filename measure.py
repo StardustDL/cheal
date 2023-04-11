@@ -34,12 +34,8 @@ time  : {wallClock} s
 cpu   : {cpuPercent} %
 memory: {maxResidentSize / 1024} MB
 """.strip())
-
-    logfile = Path("./logs") / f"{filename}.json"
-    logs = []
-    if logfile.is_file():
-        logs = json.loads(logfile.read_text())
-    logs.append({
+    
+    measure_result = {
         "time": str(datetime.now()),
         "userTime": userTime,
         "sysTime": sysTime,
@@ -48,10 +44,36 @@ memory: {maxResidentSize / 1024} MB
         "maxResidentSize": maxResidentSize,
         "output": output,
         "stats": stats,
-    })
+    }
+
+    logfile = Path("./logs") / f"{filename}.json"
+    logs = []
+    if logfile.is_file():
+        logs = json.loads(logfile.read_text())
+    logs.append(measure_result)
     logfile.write_text(json.dumps(logs))
+    return measure_result
 
 
 if __name__ == "__main__":
-    assert len(sys.argv) == 2, "Please give a test case."
-    executeWithTime(sys.argv[1])
+    assert len(sys.argv) >= 2, "Please give a test case."
+    name = sys.argv[1]
+    LIMIT = 100
+    TcpuPercent = 0
+    TwallClock = 0
+    TmaxResidentSize = 0
+    for i in range(LIMIT):
+        print(f"----- {i+1} / {LIMIT} -----")
+        result = executeWithTime(name)
+        cpuPercent = result["cpuPercent"]
+        wallClock = result["wallClock"]
+        maxResidentSize = result["maxResidentSize"]
+        TcpuPercent += cpuPercent
+        TwallClock += wallClock
+        TmaxResidentSize += maxResidentSize
+    print("-" * 20)
+    print(f"""
+time  : {TwallClock / LIMIT} s
+cpu   : {TcpuPercent / LIMIT} %
+memory: {TmaxResidentSize / LIMIT / 1024} MB
+""".strip())

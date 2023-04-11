@@ -66,11 +66,14 @@ class CIPMultipleBatchSolver(Solver):
         return batches
 
     def solve(self, state: ConnectionState) -> Solution:
-        totalWeak = len(state.pairs())
+        totalWeak = len(state.pairs)
+        if totalWeak == 0:
+            return Solution(state)
+
         singleSolver = CIPSingleBatchSolver(self.C1, self.C3, self.C4)
 
         def solveKBatch(k: int):
-            stateK = state.copy()
+            stateK: ConnectionState = state.copy()
             for config in stateK.pods.configs.values():
                 if config.redundancy != None:
                     config.redundancy *= k

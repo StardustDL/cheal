@@ -1,6 +1,5 @@
 import dataclasses
 import importlib
-from typing import Self
 
 
 def getClassName(cls: type):
@@ -91,7 +90,7 @@ class Serializable:
         if postinit:
             postinit()
 
-    def copy(self) -> Self:
+    def copy(self):
         result = self.__class__()
         result.load(self.dump())
         return result

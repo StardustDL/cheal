@@ -19,12 +19,12 @@ class CIPSolver:
         id2int = {}
         for k in self.state.pods:
             id2int[k] = len(id2int)
-        PR = [([id2int[p.id] for p in self.state.pods.types[k]], self.state.pods.redus[k])
+        PR = [([id2int[p.id] for p in self.state.pods.types[k]], self.state.pods.configs[k].redundancy)
               for k in self.state.pods.types]
         M = sum([[id2int[p.id] for p in self.state.pods.types[k]]
-                for k, m in self.state.pods.majors.items() if m], start=[])
+                for k, c in self.state.pods.configs.items() if c.major], start=[])
         E = list(set((id2int[x], id2int[y])
-                 for x, l in self.state.subhs.items() for y in l))
+                 for x, l in self.state.items() for y in l))
         self.id2int = id2int
         self.int2id = {v: k for k, v in id2int.items()}
         self.PR = PR

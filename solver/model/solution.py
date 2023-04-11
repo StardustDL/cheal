@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from .connection import ConnectionState
 from .pod import Pod
 from functools import cached_property
+from rich import print
 
 
 @dataclass
@@ -13,7 +14,7 @@ class Batch:
     @cached_property
     def coveredConnection(self):
         podSet = {p.id for p in self.pods}
-        return {(source, target) for source, target in self.state.pairs() if source in podSet or target in podSet}
+        return {(source, target) for source, target in self.state.pairs if source in podSet or target in podSet}
 
     @cached_property
     def majors(self):
@@ -76,7 +77,7 @@ class Solution:
         return f"[{'; '.join(str(batch) for batch in self.batches)}] @ {self.evaluated}"
 
     def display(self):
-        totalPairs = len(self.state.pairs())
+        totalPairs = len(self.state.pairs)
         print(f"Solution:")
         print(f"""  {len(self.batches)} batches
   include {len(self.pods)} / {len(self.state.pods)} pods ({len(self.majors)} majors)
