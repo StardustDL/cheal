@@ -5,3 +5,4 @@
 *.png
 *.ipynb
 **/__pycache__/*
+*.json

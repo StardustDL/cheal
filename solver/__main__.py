@@ -2,6 +2,7 @@ import sys
 import time
 from pathlib import Path
 from rich import print
+import json
 
 
 def main(buildScript: str):
@@ -29,7 +30,16 @@ def main(buildScript: str):
     end = time.time()
     print(f"Solved in {end - start:.2f} seconds")
     print("-" * 50)
-    
+
+    solution.display()
+
+def bug():
+    from .model.connection import ConnectionState
+    state = ConnectionState()
+    state.load(json.loads(Path("./bug.json").read_text()))
+    from .solver import CIPMultipleBatchSolver
+    solver = CIPMultipleBatchSolver()
+    solution = solver.solve(state)
     solution.display()
 
 

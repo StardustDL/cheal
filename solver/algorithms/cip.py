@@ -59,8 +59,7 @@ class CIPSolver:
         opt = pyo.SolverFactory('scip')
         opt.solve(self.model)
 
-        selectInts = [i for i in range(len(self.id2int)) if int(
-            pyo.value(self.model.x[i])) == 1]
+        selectInts = [i for i in range(len(self.id2int)) if abs(pyo.value(self.model.x[i]) - 1.0) < 0.1]
         selectPods = [self.pods[self.int2id[i]] for i in selectInts]
 
         return selectPods
