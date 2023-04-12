@@ -58,10 +58,11 @@ memory: {maxResidentSize / 1024} MB
 if __name__ == "__main__":
     assert len(sys.argv) >= 2, "Please give a test case."
     name = sys.argv[1]
-    LIMIT = 100
+    LIMIT = int(sys.argv[2] if len(sys.argv) > 2 else 10)
     TcpuPercent = 0
     TwallClock = 0
     TmaxResidentSize = 0
+    TmaxWallClock = 0
     for i in range(LIMIT):
         print(f"----- {i+1} / {LIMIT} -----")
         result = executeWithTime(name)
@@ -71,9 +72,10 @@ if __name__ == "__main__":
         TcpuPercent += cpuPercent
         TwallClock += wallClock
         TmaxResidentSize += maxResidentSize
+        TmaxWallClock = max(TmaxWallClock, wallClock)
     print("-" * 20)
     print(f"""
-time  : {TwallClock / LIMIT} s
+time  : {TwallClock / LIMIT} s / (max) {TmaxWallClock} s
 cpu   : {TcpuPercent / LIMIT} %
 memory: {TmaxResidentSize / LIMIT / 1024} MB
 """.strip())

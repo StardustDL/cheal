@@ -168,27 +168,45 @@ class LinkPath(Serializable, list[int]):
 if __name__ == "__main__":
     from .pod import PodConfig
     pods = PodContainer()
-    pod0 = Pod("sm2", 0)
-    pod1 = Pod("csdb", 0)
-    pods.pod(pod0, pod1)
+    sm2 = [Pod("sm2", i) for i in range(2)]
+    sbim = [Pod("sbim", i) for i in range(2)]
+    nsim = [Pod("nsim", i) for i in range(2)]
+    csdb = [Pod("csdb", i) for i in range(2)]
+    cslb = [Pod("cslb", i) for i in range(2)]
+    pods.pod(*(sm2 + sbim + nsim + csdb + cslb))
 
-    host0 = Device("host-0")
-    host1 = Device("host-1")
-    sw0 = Device("tor-0")
-    sw1 = Device("tor-1")
     topo = NetworkTopo()
-    topo.device(host0, host1, sw0, sw1)
-    topo.cable((host0, 0), (sw0, 0))
-    topo.cable((host0, 1), (sw1, 0))
-    topo.cable((host1, 0), (sw0, 1))
-    topo.cable((host1, 1), (sw1, 1))
+    eor = [Device(f"eor-{i}", 8) for i in range(2)]
+    tor = [Device(f"tor-{i}", 6) for i in range(4)]
+    host = [Device(f"host-{i}", 2) for i in range(4)]
+    topo.device(*(eor+tor+host))
+    for i in range(2):
+        for j in range(4):
+            for k in range(2):
+                topo.cable((eor[i], j*2+k), (tor[j], i*2+k))
+    for i in range(0, 4, 2):
+        t0, t1 = tor[i:i+2]
+        h0, h1 = host[i:i+2]
+        topo.cable((t0, 0), (h0, 0))
+        topo.cable((t0, 1), (h1, 0))
+        topo.cable((t1, 0), (h0, 1))
+        topo.cable((t1, 1), (h1, 1))
 
     net = Network(topo, pods)
-    net.bind(pod0, host0)
-    net.bind(pod1, host1)
+    net.bind(sm2[0], host[0])
+    net.bind(sbim[0], host[0])
+    net.bind(nsim[0], host[0])
+    net.bind(csdb[0], host[1])
+    net.bind(nsim[1], host[1])
+    net.bind(csdb[1], host[2])
+    net.bind(cslb[0], host[2])
+    net.bind(sm2[1], host[3])
+    net.bind(sbim[1], host[3])
+    net.bind(cslb[1], host[3])
 
     fnet = net.freeze()
-    fnet.off((host0, 0))
+    fnet.off((host[0], 0))
+
     healthy, weak = fnet.state("sm2-0", "csdb-0")
     print("Healthy:")
     for path in healthy:
@@ -198,8 +216,7 @@ if __name__ == "__main__":
         print(path.readable)
 
     from ..generator import ProbabilityConnectionStateGenerator
-    gen = ProbabilityConnectionStateGenerator()
-    gen.fromNetwork(fnet)
+    gen = ProbabilityConnectionStateGenerator.fromNetwork(fnet)
     print("Probabilities:")
     print(gen.probabilities)
     gen.generate().display()

@@ -1,6 +1,5 @@
 /logs
 /stats
-/tests
 *.log
 *.png
 *.ipynb
