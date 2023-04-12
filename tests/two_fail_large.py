@@ -48,9 +48,9 @@ ports = net.ports()
 
 frenet = net.freeze()
 
-fail = random.choice(ports)
+fail = random.choices(ports, k=2)
 print(f"Fail: {fail}")
-frenet.off(fail)
+frenet.off(*fail)
 
 gen = ProbabilityConnectionStateGenerator.fromNetwork(frenet)
 state = gen.generate()
