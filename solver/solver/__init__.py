@@ -24,7 +24,11 @@ class CIPSingleBatchSolver(Solver):
 
     def solve(self, state: ConnectionState) -> Solution:
         pods = CIPSolver(state).compile(self.C1, self.C3, self.C4).solve()
-        return Solution(state=state, batches=[Batch(state=state, pods=pods)])
+        batch = Batch()
+        batch.extend(pods)
+        result = Solution(state=state)
+        result.append(batch)
+        return result
 
 
 @dataclass
@@ -37,13 +41,13 @@ class CIPMultipleBatchSolver(Solver):
     def splitBatch(self, state: ConnectionState, batch: Batch):
         batches: list[Batch] = []
         name2pods: dict[str, list[Pod]] = defaultdict(list)
-        for pod in batch.pods:
+        for pod in batch:
             name2pods[pod.name].append(pod)
 
         def append(i: int, pod: Pod):
             while i >= len(batches):
-                batches.append(Batch(state=state, pods=[]))
-            batches[i].pods.append(pod)
+                batches.append(Batch())
+            batches[i].append(pod)
 
         for name, pods in name2pods.items():
             config = state.pods.configs[name]
@@ -105,13 +109,13 @@ class CIPMultipleBatchSolver(Solver):
                 targetSolution = solution
                 batchR = mid-1
 
-        assert len(targetSolution.batches) == 1 and len(
+        assert len(targetSolution) == 1 and len(
             targetSolution.coveredConnection) == maxCovered, "Unexpected none solution."
 
-        finalSolution = Solution(
-            state=state, batches=self.splitBatch(state, targetSolution.batches[0]))
-        assert len(finalSolution.batches) == batchCount, \
-            f"The batch count is not equal, {batchCount=}, {len(finalSolution.batches)=}."
+        finalSolution = Solution(state=state)
+        finalSolution.extend(self.splitBatch(state, targetSolution[0]))
+        assert len(finalSolution) == batchCount, \
+            f"The batch count is not equal, {batchCount=}, {len(finalSolution)=}."
 
         assert finalSolution.valid()
 

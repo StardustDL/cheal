@@ -1,4 +1,6 @@
 from dataclasses import dataclass, field, replace
+
+from . import ExecutionStatus
 from .pod import PodContainer, Pod
 from ..serialization import Serializable
 from rich import print
@@ -7,6 +9,7 @@ from rich import print
 @dataclass
 class ConnectionState(Serializable, dict[str, list[str]]):
     pods: PodContainer = field(default_factory=PodContainer)
+    status: ExecutionStatus = field(default_factory=ExecutionStatus)
 
     @property
     def pairs(self):
@@ -33,3 +36,4 @@ class ConnectionState(Serializable, dict[str, list[str]]):
         print(f"{len(self.pairs)} Weak Connections:")
         for source, targets in self.items():
             print(f"  {source} -> {', '.join(targets)}")
+        self.status.display()

@@ -1,50 +1,105 @@
+import subprocess
 import sys
 import time
 from pathlib import Path
 from rich import print
 import json
 
+import click
 
-def main(buildScript: str):
+
+class AliasedGroup(click.Group):
+    def get_command(self, ctx, cmd_name):
+        rv = click.Group.get_command(self, ctx, cmd_name)
+        if rv is not None:
+            return rv
+        matches = [x for x in self.list_commands(ctx)
+                   if x.startswith(cmd_name)]
+        if not matches:
+            return None
+        elif len(matches) == 1:
+            return click.Group.get_command(self, ctx, matches[0])
+        ctx.fail(f"Too many matches: {', '.join(sorted(matches))}")
+
+    def resolve_command(self, ctx, args):
+        # always return the full command name
+        _, cmd, args = super().resolve_command(ctx, args)
+        assert cmd is not None, "Command is None."
+        return cmd.name, cmd, args
+
+
+def execute(module: str, *args: str):
+    from .model import ExecutionStatus
+
+    status = ExecutionStatus()
+
+    result = subprocess.run(["/usr/bin/time", "-v", "python", "-m", module, *args],
+                            check=True, capture_output=True, text=True, encoding="utf-8", timeout=600)
+    output = result.stdout.strip()
+    stats = result.stderr.strip()
+    for line in stats.splitlines():
+        line = line.strip()
+        if line.startswith("User time (seconds):"):
+            status.userTime = float(line.split(':')[1].strip())
+        if line.startswith("System time (seconds):"):
+            status.sysTime = float(line.split(':')[1].strip())
+        if line.startswith("Percent of CPU this job got:"):
+            status.cpuPercent = int(line.split(':')[1].strip().removesuffix("%"))
+        if line.startswith("Elapsed (wall clock) time (h:mm:ss or m:ss):"):
+            time = line.removeprefix(
+                "Elapsed (wall clock) time (h:mm:ss or m:ss): ").strip()
+            minute, second = map(float, time.split(":"))
+            status.wallClock = minute * 60 + second
+        if line.startswith("Maximum resident set size (kbytes):"):
+            status.maxResidentSize = int(line.split(':')[1])
+    return output, status
+
+
+@click.group(cls=AliasedGroup)
+@click.pass_context
+def main(ctx=None):
+    pass
+
+
+@main.command()
+@click.argument("file", type=click.Path(exists=True, file_okay=True, dir_okay=False, resolve_path=True, path_type=Path))
+def generate(file: Path):
+    output, status = execute("solver.generator", str(file))
     from .model.connection import ConnectionState
-    from .model.network import Network, NetworkTopo, FreezedNetwork, Device, DeviceInterface
-    from .model.pod import Pod, PodConfig, PodContainer
-    from .model.solution import Solution, Batch
-    from .generator import RandomConnectionStateGenerator, ProbabilityConnectionStateGenerator
+    data = ConnectionState()
+    data.load(json.loads(output))
+    data.status = status
+    print(json.dumps(data.dump()))
 
-    stateToSolve: ConnectionState = None
 
-    def submit(state: ConnectionState):
-        nonlocal stateToSolve
-        stateToSolve = state
+@main.command()
+@click.argument("file", type=click.Path(exists=True, file_okay=True, dir_okay=False, resolve_path=True, path_type=Path))
+def solve(file: Path):
+    output, status = execute("solver.solver", str(file))
+    from .model.solution import Solution
+    data = Solution()
+    data.load(json.loads(output))
+    data.status = status
+    print(json.dumps(data.dump()))
 
-    exec(buildScript, locals())
-    assert stateToSolve is not None
-    stateToSolve.display()
-    print("-" * 50)
 
-    from .solver import CIPMultipleBatchSolver
-    solver = CIPMultipleBatchSolver()
-    start = time.time()
-    solution = solver.solve(stateToSolve)
-    end = time.time()
-    print(f"Solved in {end - start:.2f} seconds")
-    print("-" * 50)
-
-    solution.display()
-
-def bug():
+@main.command()
+@click.argument("file", type=click.Path(exists=True, file_okay=True, dir_okay=False, resolve_path=True, path_type=Path))
+def state(file: Path):
     from .model.connection import ConnectionState
-    state = ConnectionState()
-    state.load(json.loads(Path("./bug.json").read_text()))
-    from .solver import CIPMultipleBatchSolver
-    solver = CIPMultipleBatchSolver()
-    solution = solver.solve(state)
-    solution.display()
+    data = ConnectionState()
+    data.load(json.loads(file.read_text()))
+    data.display()
+
+
+@main.command()
+@click.argument("file", type=click.Path(exists=True, file_okay=True, dir_okay=False, resolve_path=True, path_type=Path))
+def solution(file: Path):
+    from .model.solution import Solution
+    data = Solution()
+    data.load(json.loads(file.read_text()))
+    data.display()
 
 
 if __name__ == "__main__":
-    assert len(sys.argv) == 2, "Must have a file argument."
-    file = Path(sys.argv[1])
-    assert file.is_file(), "Must have a file argument."
-    main(file.read_text())
+    main()

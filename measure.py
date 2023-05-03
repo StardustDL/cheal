@@ -4,6 +4,9 @@ import json
 from pathlib import Path
 from datetime import datetime
 
+from dataclasses import dataclass
+
+
 def executeWithTime(filename):
     result = subprocess.run(["/usr/bin/time", "-v",
                              "python", "-m", "solver",
@@ -24,7 +27,8 @@ def executeWithTime(filename):
         if line.startswith("Percent of CPU this job got:"):
             cpuPercent = int(line.split(':')[1].strip().removesuffix("%"))
         if line.startswith("Elapsed (wall clock) time (h:mm:ss or m:ss):"):
-            time = line.removeprefix("Elapsed (wall clock) time (h:mm:ss or m:ss): ").strip()
+            time = line.removeprefix(
+                "Elapsed (wall clock) time (h:mm:ss or m:ss): ").strip()
             minute, second = map(float, time.split(":"))
             wallClock = minute * 60 + second
         if line.startswith("Maximum resident set size (kbytes):"):
@@ -34,7 +38,7 @@ time  : {wallClock} s
 cpu   : {cpuPercent} %
 memory: {maxResidentSize / 1024} MB
 """.strip())
-    
+
     measure_result = {
         "time": str(datetime.now()),
         "userTime": userTime,
