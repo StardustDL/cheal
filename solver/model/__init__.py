@@ -12,6 +12,4 @@ class ExecutionStatus(Serializable):
     maxResidentSize: float = 0
 
     def display(self):
-        print(f"Status:")
-        print(f"""  time  : {self.wallClock:.4f} s ({self.cpuPercent}% CPU)
-  memory: {self.maxResidentSize / 1024:.4f} MB""")
+        print(f"Status: {self.wallClock:.4f} s ({self.cpuPercent}% CPU), {self.maxResidentSize / 1024:.4f} MB")
