@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from functools import cached_property
+from itertools import combinations
 
 from ..algorithms.path import ShortestPathCollector
 
@@ -63,6 +64,11 @@ class Network(Serializable):
 
     def freeze(self):
         return FreezedNetwork(topo=self.topo, pods=self.pods, binds=self.binds)
+    
+    def connectedPairs(self):
+        for x, y in combinations(self.binds.keys(), 2):
+            if self.pods.isConnected(x, y):
+                yield x, y
 
 
 @dataclass

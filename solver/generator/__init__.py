@@ -23,8 +23,11 @@ class RandomConnectionStateGenerator:
         types = list(type2pods.keys())
         assert len(types) > 1, "Must have more than 1 pod type."
         for _ in range(weaks):
-            t1, t2 = map(type2pods.get, random.choices(types, k=2))
-            assert t1 and t2, "The type must have pods."
+            while True:
+                t1, t2 = map(type2pods.get, random.choices(types, k=2))
+                assert t1 and t2, "The type must have pods."
+                if state.pods.isConnected(t1, t2):
+                    break
             p1, p2 = random.choice(t1), random.choice(t2)
             state.weak(p1, p2)
 
@@ -37,7 +40,7 @@ class ProbabilityConnectionStateGenerator(Serializable):
     @classmethod
     def fromNetwork(cls, network: FreezedNetwork):
         result = cls(network.pods.copy())
-        for s, t in combinations(network.binds.keys(), 2):
+        for s, t in network.connectedPairs():
             healthy, weak = network.state(s, t)
             total = (len(healthy) + len(weak))
             result.probabilities[(s, t)] = (len(weak) / total) if total > 0 else 0.0
