@@ -55,8 +55,9 @@ class PodContainer(Serializable, dict[str, Pod]):
         for x, y in combinations(sorted(names), 2):
             self.topo.add((x, y))
     
-    def isConnected(self, pname1: str, pname2: str):
-        return (pname1, pname2) in self.topo or (pname2, pname1) in self.topo
+    def isConnected(self, pid1: str, pid2: str):
+        p1, p2 = Pod.fromId(pid1), Pod.fromId(pid2)
+        return (p1.name, p2.name) in self.topo or (p2.name, p1.name) in self.topo
 
     @property
     def types(self):
