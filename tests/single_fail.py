@@ -22,11 +22,8 @@ pods.pod(*[Pod("csdb", i) for i in range(26)])
 pods.configs["csdb"] = PodConfig(1)
 pods.pod(*[Pod("cslb", i) for i in range(8)])
 pods.configs["cslb"] = PodConfig(1)
-pods.connect("csdb", "sm2")
-pods.connect("sbim", "sm2")
-pods.connect("nsim", "sm2")
-pods.connect("sbim", "cslb")
-pods.connect("nsim", "cslb")
+pods.connect("sm2", "csdb", "sbim", "nsim")
+pods.connect("cslb", "sbim", "nsim")
 
 topo = NetworkTopo()
 eor = [Device(f"eor-{i}", 8) for i in range(2)]

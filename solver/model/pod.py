@@ -51,7 +51,11 @@ class PodContainer(Serializable, dict[str, Pod]):
             assert pod.id not in self
             self[pod.id] = pod
 
-    def connect(self, *names: str):
+    def connect(self, name: str, *others: str):
+        for other in others:
+            self.topo.add(tuple(sorted([name, other])))
+
+    def connectAll(self, *names: str):
         for x, y in combinations(sorted(names), 2):
             self.topo.add((x, y))
     
