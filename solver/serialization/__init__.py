@@ -28,6 +28,11 @@ def dumpValue(value):
 
 
 def loadValue(raw: dict | list | object):
+    def totuple(data):
+        if isinstance(data, list):
+            return tuple(data)
+        return data
+
     if isinstance(raw, list):
         return [loadValue(v) for v in raw]
     if isinstance(raw, dict):
@@ -35,7 +40,7 @@ def loadValue(raw: dict | list | object):
         if type == "set":
             rlist = raw.pop("__raw__")
             assert isinstance(rlist, list) and len(raw) == 0
-            return {loadValue(v) for v in rlist}
+            return {totuple(loadValue(v)) for v in rlist}
         if not type:
             return {k: loadValue(v) for k, v in raw.items()}
         cls = getClassType(type)

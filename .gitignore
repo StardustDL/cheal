@@ -5,3 +5,6 @@
 *.ipynb
 **/__pycache__/*
 *.json
+**/tests
+**/bug
+*.txt

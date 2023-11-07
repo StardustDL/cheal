@@ -34,9 +34,12 @@ def execute(module: str, *args: str):
     status = ExecutionStatus()
 
     result = subprocess.run(["/usr/bin/time", "-v", "python", "-m", module, *args],
-                            check=True, capture_output=True, text=True, encoding="utf-8", timeout=600)
+                            capture_output=True, text=True, encoding="utf-8", timeout=600)
     output = result.stdout.strip()
     stats = result.stderr.strip()
+    if result.returncode != 0:
+        print(stats)
+        result.check_returncode()
     for line in stats.splitlines():
         line = line.strip()
         if line.startswith("User time (seconds):"):
@@ -44,7 +47,8 @@ def execute(module: str, *args: str):
         if line.startswith("System time (seconds):"):
             status.sysTime = float(line.split(':')[1].strip())
         if line.startswith("Percent of CPU this job got:"):
-            status.cpuPercent = int(line.split(':')[1].strip().removesuffix("%"))
+            status.cpuPercent = int(line.split(
+                ':')[1].strip().removesuffix("%"))
         if line.startswith("Elapsed (wall clock) time (h:mm:ss or m:ss):"):
             time = line.removeprefix(
                 "Elapsed (wall clock) time (h:mm:ss or m:ss): ").strip()
