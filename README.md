@@ -1,19 +1,3 @@
+# ![Cheal](https://socialify.git.ci/StardustDL/cheal/image?description=1&font=Bitter&forks=1&issues=1&language=1&owner=1&pulls=1&stargazers=1&theme=Light "Cheal")
 
-POD数量：
-
-- 1k
-- 500
-- 200
-- 100
-
-类型数量（pod数量的百分比）：
-
-- 5%
-- 10%
-- 20%
-
-亚健康链路百分比（占完全图）：
-
-- 5%
-- 10%
-- 20%
+Connection-HEALing is a quadratic-programming modeler and solver for connection healing strategy problem.

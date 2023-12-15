@@ -2,6 +2,7 @@ from itertools import product
 from pathlib import Path
 import subprocess
 import json
+import os
 
 SRC = """
 from typing import TYPE_CHECKING
@@ -76,12 +77,13 @@ def gensrc(fail_count, select_ports):
     return SRC.replace("{SELECT_PORTS}", select_ports).replace("{FAIL_COUNT}", str(fail_count))
 
 select_ports_choice = ["ppod", "phost", "phostPort", "ptor", "ptorPort", "peorPort", "pall"]
-fail_count_choice = list(range(1, 4))
+fail_count_choice = list(range(1, 5))
 
 def main():
     for fail, ports in product(fail_count_choice, select_ports_choice):
         name = f"f1k_{fail}_{ports}"
         genfile = Path(f"./tests/{name}.py")
+        os.makedirs(genfile.parent, exist_ok=True)
         genfile.write_text(gensrc(fail, ports))
         subprocess.run(["python", "batch.py", name], check=True)
 

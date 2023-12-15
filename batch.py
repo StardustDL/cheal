@@ -32,6 +32,7 @@ def one(name: str, index: int):
         except:
             state = fState.read_text()
             bugfile = Path("./bug") / f"{str(int(datetime.now().timestamp()))}.json"
+            os.makedirs(bugfile.parent, exist_ok=True)
             bugfile.write_text(state)
             print(f"Fail: {index} for {name}, copy to {bugfile}, retry")
 
